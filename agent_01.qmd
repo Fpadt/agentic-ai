@@ -1,0 +1,171 @@
+---
+title: "EAISI - Agentic-AI"
+author: "F.J. Padt"
+format: html
+---
+# EAISI - Agentic-AI
+
+
+## What we're building and why
+MCP (Model Context Protocol) is like a bridge that lets AI models (like Claude or GitHub Copilot) talk to your tools and data. Think of it as creating a "toolkit" that the AI can use.
+
+The basic flow is:
+
+You create an MCP Server - This exposes your tools/data
+An AI Client connects - Like Claude Desktop or VS Code
+The AI can now use your tools - It can read your files, run code, etc.
+
+VS Code GitHub Copilot supporta MCP with full capabilities (✅ for Resources, Prompts, Tools, Discovery, Sampling, and Roots).
+This is actually even better than using Claude Desktop because you can work directly in your familiar VS Code environment with your R and Python projects!
+Let me guide you through setting up MCP with VS Code GitHub Copilot instead:
+
+### Step 1: Let's create the simplest possible MCP server
+First, let's create a very basic server that just exposes information about your R/Python setup:
+
+step0:
+
+Download from Official Website (Recommended)
+
+Go to the Node.js website: https://nodejs.org/
+Download the LTS version (Long Term Support) - this is the recommended version
+Run the installer - it will install both Node.js and npm automatically
+Follow the installation wizard - accept all defaults
+Restart your terminal/command prompt after installation
+
+Step 1: Enable MCP in VS Code
+First, you need to configure VS Code to use MCP. This is typically done through VS Code settings or extensions. Since MCP support in VS Code with GitHub Copilot is relatively new, let me check the current setup process:
+
+Check your VS Code version - Make sure you have the latest version
+Check GitHub Copilot extension - Ensure it's updated to the latest version
+Look for MCP settings - In VS Code settings, search for "MCP" or "Model Context Protocol"
+
+```{python}
+# dev_assistant.py
+from mcp.server.fastmcp import FastMCP
+import os
+import subprocess
+
+agent = FastMCP("R Python Development Assistant")
+
+
+@agent.tool()
+def run_r_code(code: str) -> str:
+    """Execute R code and return the output"""
+    try:
+        # Write R code to temporary file
+        with open("temp_script.R", "w") as f:
+            f.write(code)
+        
+        # Run R script
+        result = subprocess.run(
+            ["Rscript", "temp_script.R"], 
+            capture_output=True, 
+            text=True,
+            timeout=30
+        )
+        
+        # Clean up
+        if os.path.exists("temp_script.R"):
+            os.remove("temp_script.R")
+            
+        if result.returncode == 0:
+            return f"R Output:\n{result.stdout}"
+        else:
+            return f"R Error:\n{result.stderr}"
+            
+    except Exception as e:
+        return f"Error running R code: {str(e)}"
+
+
+@agent.tool()
+def run_python_code(code: str) -> str:
+    """Execute Python code and return the output"""
+    try:
+        # Use exec to run Python code
+        import io
+        import sys
+        
+        # Capture output
+        old_stdout = sys.stdout
+        sys.stdout = captured_output = io.StringIO()
+        
+        # Execute code
+        exec(code)
+        
+        # Get output
+        sys.stdout = old_stdout
+        output = captured_output.getvalue()
+        
+        return f"Python Output:\n{output}" if output else "Code executed successfully (no output)"
+        
+    except Exception as e:
+        return f"Python Error:\n{str(e)}"
+
+
+@agent.tool()
+def list_project_files(path: str = ".") -> str:
+    """List files in project directory, highlighting R and Python files"""
+    try:
+        files = []
+        for root, dirs, filenames in os.walk(path):
+            # Skip hidden directories and common ignore patterns
+            dirs[:] = [d for d in dirs if not d.startswith('.') and d not in ['__pycache__']]
+            
+            for filename in filenames:
+                rel_path = os.path.relpath(os.path.join(root, filename), path)
+                if filename.endswith(('.R', '.py', '.qmd', '.Rmd', '.ipynb')):
+                    files.append(f"📄 {rel_path}")
+                elif filename.endswith(('.csv', '.json', '.xlsx')):
+                    files.append(f"📊 {rel_path}")
+                else:
+                    files.append(f"   {rel_path}")
+        
+        return f"Project files in {path}:\n" + "\n".join(files[:50])  # Limit to 50 files
+        
+    except Exception as e:
+        return f"Error listing files: {str(e)}"
+
+
+@agent.resource("project://current")
+def get_project_overview() -> str:
+    """Overview of current project structure"""
+    cwd = os.getcwd()
+    
+    # Count different file types
+    r_files = []
+    py_files = []
+    quarto_files = []
+    
+    for root, dirs, files in os.walk("."):
+        for file in files:
+            if file.endswith('.R'):
+                r_files.append(file)
+            elif file.endswith('.py'):
+                py_files.append(file)
+            elif file.endswith(('.qmd', '.Rmd')):
+                quarto_files.append(file)
+    
+    overview = f"""
+Project Overview - {os.path.basename(cwd)}
+Location: {cwd}
+
+File Summary:
+- R files: {len(r_files)} ({', '.join(r_files[:5])}{'...' if len(r_files) > 5 else ''})
+- Python files: {len(py_files)} ({', '.join(py_files[:5])}{'...' if len(py_files) > 5 else ''})
+- Quarto/Rmd files: {len(quarto_files)} ({', '.join(quarto_files[:5])}{'...' if len(quarto_files) > 5 else ''})
+
+This project appears to be a {
+    'mixed R/Python' if r_files and py_files else
+    'R-focused' if r_files else
+    'Python-focused' if py_files else
+    'documentation-focused' if quarto_files else
+    'general'
+} project.
+"""
+    return overview
+
+
+if __name__ == "__main__":
+    agent.run()
+```
+

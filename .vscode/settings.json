@@ -1,0 +1,12 @@
+{
+  "github.copilot.mcp.servers": {
+    "dev-assistant": {
+      "command": "uv",
+      "args": ["run", "dev_assistant.py"],
+      "cwd": "C:\\RW\\agentic-ai"
+    }
+  },
+  "github.copilot.advanced": {
+    
+  }
+}

@@ -26,3 +26,7 @@ environments. The virtual environments are setup with:
 - Python: venv (using uv)
 
 For sharing data between R and Python we use the `reticulate` package.
+
+# Test your server directly
+
+uv run mcp dev dev_assistant.py

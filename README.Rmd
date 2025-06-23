@@ -34,6 +34,10 @@ The virtual environments are setup with:
 
 For sharing data between R and Python we use the `reticulate` package.
 
+# Test your server directly
+uv run mcp dev dev_assistant.py
+
+
 ```{r cars, echo = FALSE, eval = FALSE}
 summary(cars)
 ```
